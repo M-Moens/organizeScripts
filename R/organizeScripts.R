@@ -15,15 +15,15 @@ newProject <- function(dir, projectName) {
   
   if (!dir.exists(save_pathd)) {
     dir.create(save_pathd)
-    save_pathdd = paste0(save_pathd, "/", projectName, ".csv")
-    if (file.exists(save_pathdd)) {
-      rr = read.csv(save_pathdd)
-      if (rr$y != dirname) {
-        return(message("Project name with different directory exists! Exiting function."))
-      }
-    }
-    write.csv(data.frame(x = projectName, y = dirname), save_pathdd)
   }
+  save_pathdd = paste0(save_pathd, "/", projectName, ".csv")
+  if (file.exists(save_pathdd)) {
+    rr = read.csv(save_pathdd)
+    if (rr$y != dirname) {
+      return(message("Project name with different directory exists! Exiting function."))
+    }
+  }
+  write.csv(data.frame(x = projectName, y = dirname), save_pathdd)
   write.csv(data.frame(x = projectName, y = dirname),  paste0(save_pathd,"/cur1234.csv"))
   
   
