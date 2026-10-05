@@ -4,10 +4,12 @@
 \alias{importD}
 \title{Import a data file}
 \usage{
-importD(name)
+importD(name, sep = ",")
 }
 \arguments{
 \item{name}{The name of the data file (with extension).}
+
+\item{sep}{The field separator for CSV files. Defaults to a comma.}
 }
 \value{
 None

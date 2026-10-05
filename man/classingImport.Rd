@@ -4,12 +4,12 @@
 \alias{classingImport}
 \title{Class and import Object}
 \usage{
-classingImport(dir)
+classingImport(dir, sep = ",")
 }
 \arguments{
 \item{dir}{The directory where the object is saved.}
 
-\item{name}{The name of the file (with extension).}
+\item{sep}{The field separator for CSV files. Defaults to a comma.}
 }
 \value{
 None

@@ -117,13 +117,14 @@ processScript <- function(name) {
 #' This function opens a datafile
 #'
 #' @param name The name of the data file (with extension).
+#' @param sep The field separator for CSV files. Defaults to a comma.
 #' @return None
 #' @export
-importD <- function(name) {
+importD <- function(name, sep = ",") {
   mydefaultdir = getCurrentDir()
   xx= paste0(mydefaultdir, "/data/", name)
   if (file.exists(xx)) {
-    classingImport(xx)
+    classingImport(xx, sep = sep)
   }
 }
 
@@ -229,17 +230,17 @@ classing <- function(x, dir, name) {
 #' This function imports an object based on its class.
 #'
 #' @param dir The directory where the object is saved.
-#' @param name The name of the file (with extension).
+#' @param sep The field separator for CSV files. Defaults to a comma.
 #' @return None
 #' @export
-classingImport <- function(dir) {
+classingImport <- function(dir, sep = ",") {
   name2 = gsub(".*\\.","",dir)
   l=NA
   
   if (name2 == "shp") {
     l= st_read(dir)
   } else if (name2 == "csv") {
-    l = read.csv(dir)
+    l = read.csv(dir, sep = sep)
   } else if (name2 %in%  c("tiff","tif","grd")) {
     l = stack(dir)
   }
