@@ -1,0 +1,6 @@
+^organizeScripts$
+^\.git$
+^\.Rbuildignore$
+^.*[.]Rcheck$
+^.*[.]tar[.]gz$
+^\.check-library$

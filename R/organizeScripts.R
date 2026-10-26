@@ -4,64 +4,24 @@
 #'
 #' @param dir The base directory where the project will be created.
 #' @param projectName The name of the project.
-#' @return A message indicating the status of the project creation.
+#' @return The project directory invisibly.
 #' @export
 newProject <- function(dir, projectName) {
-  if (substring(dir,nchar(dir)) == "/") {dirname = paste0(dir, projectName)} else {
-  dirname = paste0(dir, "/", projectName)}
-  save_path = system.file(package = "organizeScripts")
-  save_pathd = paste0(save_path, "/projects")
- 
-  
-  if (!dir.exists(save_pathd)) {
-    dir.create(save_pathd)
-  }
-  save_pathdd = paste0(save_pathd, "/", projectName, ".csv")
-  if (file.exists(save_pathdd)) {
-    rr = read.csv(save_pathdd)
-    if (rr$y != dirname) {
-      return(message("Project name with different directory exists! Exiting function."))
-    }
-  }
-  write.csv(data.frame(x = projectName, y = dirname), save_pathdd)
-  write.csv(data.frame(x = projectName, y = dirname),  paste0(save_pathd,"/cur1234.csv"))
-  
-  
-  if (dir.exists(dirname)) {
-    message("Project exists \n")
-  } else {
-    dir.create(dirname)
-  }
-  
-  dirnames = c("data", "scripts", "output", "manuscript","temp")
-  recdirs = c("output_figures", "output_finalFigures","output_models", "data_final",
-              "scripts_source", "scripts_final", "scripts_backup", "data_backup",
-              "data_extra", "data_original")
-  
-  recdirs1 = data.frame(x = sapply(recdirs, FUN = function(x) strsplit(x, "_")[[1]][1]),
-                        y = sapply(recdirs, FUN = function(x) strsplit(x, "_")[[1]][2]))
-  
-  for (i in 1:length(dirnames)) {
-    dirn = paste0(dirname, "/", dirnames[i])
-    if (!dir.exists(dirn)) {
-      dir.create(dirn)
-    }
-    
-    if (dirnames[i] %in% recdirs1$x) {
-      for (j in recdirs1$y[which(recdirs1$x == dirnames[i])]) {
-        plusdir = paste0(dirn, "/", j)
-        if (!dir.exists(plusdir)) {
-          dir.create(plusdir)
-        } else {
-          message(paste0(plusdir, " already exists \n"))
-        }
-      }
-    } else {
-      message(paste0(dirn, " already exists! \n"))
-    }
-  }
-  
-  return(message("Finished editing/creating the project."))
+  .check_name(projectName)
+  root <- file.path(normalizePath(dir, winslash = "/", mustWork = FALSE), projectName)
+  record <- file.path(.settings_dir(), "projects", paste0(projectName, ".csv"))
+  if (file.exists(record) && .read_path(record, "y") != root)
+    stop("Project name is already registered to another directory: ", projectName)
+  folders <- c("data", "scripts", "output", "manuscript", "temp",
+    "output/figures", "output/finalFigures", "output/models", "data/final",
+    "scripts/source", "scripts/final", "scripts/backup", "data/backup",
+    "data/extra", "data/original")
+  .ensure_dir(root)
+  root <- normalizePath(root, winslash = "/", mustWork = TRUE)
+  for (folder in folders) .ensure_dir(file.path(root, folder))
+  utils::write.csv(data.frame(x = projectName, y = root), record, row.names = FALSE)
+  setProject(projectName)
+  invisible(root)
 }
 
 #' Set Project Directory
@@ -69,32 +29,30 @@ newProject <- function(dir, projectName) {
 #' This function sets the default project directory.
 #'
 #' @param projectName The name of the project.
-#' @return None
+#' @return The active project directory invisibly.
 #' @export
 setProject <- function(projectName) {
-  save_path = system.file(package = "organizeScripts")
-  save_pathdd = paste0(save_path, "/projects/", projectName, ".csv")
-  if (file.exists(save_pathdd)) {
-    dirname = read.csv(save_pathdd)$y
-    write.csv(data.frame(x = projectName, y = dirname),  paste0(save_path,"/projects/cur1234.csv"))
-    } else {
-      message("Project doesn't exist yet!")
-    }
+  .check_name(projectName)
+  settings <- .settings_dir()
+  record <- file.path(settings, "projects", paste0(projectName, ".csv"))
+  path <- .read_path(record, "y")
+  if (!dir.exists(path)) stop("Project directory does not exist: ", path)
+  .copy_file(record, file.path(settings, "projects", "cur1234.csv"))
+  invisible(path)
 }
 
 #' Set Project Directory
 #'
 #' This function gets the current directory
 #'
-#' @return None
+#' @return The active project directory.
 #' @export
-getCurrentDir = function() {
-  save_path = system.file(package = "organizeScripts")
-  save_pathd = paste0(save_path, "/projects")
-  rr = paste0(save_pathd,"/cur1234.csv")
-  rr =read.csv(rr)
-  mydir = rr$y
-  return(mydir)
+getCurrentDir <- function() {
+  record <- file.path(.settings_dir(), "projects", "cur1234.csv")
+  if (!file.exists(record)) stop("No active project. Use newProject() or setProject() first.")
+  path <- .read_path(record, "y")
+  if (!dir.exists(path)) stop("Project directory does not exist: ", path)
+  path
 }
 
 #' Process a Script File
@@ -109,7 +67,7 @@ processScript <- function(name) {
   if (!file.exists(paste0(mydefaultdir, "/scripts/", name, ".R"))) {
     writeLines(paste0("## ",name, " script:\n"), paste0(mydefaultdir, "/scripts/", name, ".R"))
   }
-  file.edit(paste0(mydefaultdir, "/scripts/", name, ".R"))
+  utils::file.edit(paste0(mydefaultdir, "/scripts/", name, ".R"))
 }
 
 #' Import a data file
@@ -118,14 +76,10 @@ processScript <- function(name) {
 #'
 #' @param name The name of the data file (with extension).
 #' @param sep The field separator for CSV files. Defaults to a comma.
-#' @return None
+#' @return The imported object.
 #' @export
 importD <- function(name, sep = ",") {
-  mydefaultdir = getCurrentDir()
-  xx= paste0(mydefaultdir, "/data/", name)
-  if (file.exists(xx)) {
-    classingImport(xx, sep = sep)
-  }
+  classingImport(file.path(getCurrentDir(), "data", name), sep = sep)
 }
 
 #' Save a data file
@@ -135,12 +89,11 @@ importD <- function(name, sep = ",") {
 #' @param x The object to be saved.
 #' @param name The name of the file (without extension).
 #' @param sep The field separator for CSV files. Defaults to a comma.
-#' @return None
+#' @return The saved file path invisibly.
 #' @export
-saveD <- function(x, name, sep = ",") {
-  mydefaultdir = getCurrentDir()
-  mydir = paste0(mydefaultdir, "/data/")
-  classing(x, dir = mydir, name, sep = sep)
+#' @param format Output format: auto, csv, rds, shp, or tiff.
+saveD <- function(x, name, sep = ",", format = "auto") {
+  classing(x, file.path(getCurrentDir(), "data"), name, sep = sep, format = format)
 }
 
 #' Finalize a data file
@@ -148,35 +101,11 @@ saveD <- function(x, name, sep = ",") {
 #' This function finalizes a data file by copying it to the final and backup directories.
 #'
 #' @param name The name of the data file (with extension).
-#' @return None
+#' @return The final and backup paths invisibly.
 #' @export
 finalD <- function(name) {
-  mydefaultdir = getCurrentDir()
-  name2 = gsub("\\..*","",name)
-  if (!grepl("\\.",name)) { message("Did you add the extension?")}
-  
-  
-  name3 = paste0(".",gsub(".*\\.","",name))
-  P = paste0(mydefaultdir, "/data/",name)
-  if (file.exists(P)) {
-  P2 = paste0(mydefaultdir, "/data/final/", name)
-  P4 = gsub(":", "_", gsub("\\.", "_", gsub(" ", "_", Sys.time())))
-
-  if (!dir.exists(paste0(mydefaultdir, "/data/backup/", name2))) {
-    dir.create(paste0(mydefaultdir, "/data/backup/", name2))
-  }
-  name2
-  
-  P3 = paste0(mydefaultdir, "/data/backup/", name2, "/", name2, "_", P4, name3)
-  file.copy(from = P, to = P2, overwrite = TRUE)
-  if (dir.exists(gsub(paste0("/", gsub(".*\\/", "", P3)), "", P3))) {
-    file.copy(from = P2, to = P3)
-  } else {
-    message("Directory doesn't exist\n")
-  }
-  } else {
-    message("You need to save the data file first (saveD)")
-  }
+  root <- file.path(getCurrentDir(), "data")
+  .finalize(file.path(root, name), root)
 }
 
 #' Finalize a Script File
@@ -184,24 +113,11 @@ finalD <- function(name) {
 #' This function finalizes a script file by copying it to the final and backup directories.
 #'
 #' @param name The name of the script file (without extension).
-#' @return None
+#' @return The final and backup paths invisibly.
 #' @export
 finalScript <- function(name) {
-  mydefaultdir = getCurrentDir()
-  P = paste0(mydefaultdir, "/scripts/", name, ".R")
-  P2 = paste0(mydefaultdir, "/scripts/final/", name, ".R")
-  P4 = gsub(":", "_", gsub("\\.", "_", gsub(" ", "_", Sys.time())))
-  if (!dir.exists(paste0(mydefaultdir, "/scripts/backup/", name))) {
-    dir.create(paste0(mydefaultdir, "/scripts/backup/", name))
-  }
-  
-  P3 = paste0(mydefaultdir, "/scripts/backup/", name, "/", name, "_", P4, ".R")
-  file.copy(from = P, to = P2, overwrite = TRUE)
-  if (dir.exists(gsub(paste0("/", gsub(".*\\/", "", P3)), "", P3))) {
-    file.copy(from = P2, to = P3)
-  } else {
-    message("Directory doesn't exist\n")
-  }
+  root <- file.path(getCurrentDir(), "scripts")
+  .finalize(file.path(root, paste0(name, ".R")), root)
 }
 
 #' Class and Save Object
@@ -212,20 +128,38 @@ finalScript <- function(name) {
 #' @param dir The directory where the object will be saved.
 #' @param name The name of the file (without extension).
 #' @param sep The field separator for CSV files. Defaults to a comma.
-#' @return None
+#' @return The saved file path invisibly.
 #' @export
-classing <- function(x, dir, name, sep = ",") {
-  if (class(x) == "sp") {
-    st_write(x, paste0(dir, name, ".shp"),delete_dsn = TRUE)
-  } else if (class(x) == "data.frame") {
-    write.table(x, paste0(dir, name, ".csv"), sep = sep,
-                row.names = FALSE, col.names = TRUE, qmethod = "double")
-  } else if (class(x) == "raster") {
-    writeRaster(x, paste0(dir, name, ".tiff"),overwrite = T)
-    if (nlayers(x) > 1) {
-      write.csv(data.frame(x = names(raster)), paste0(dir, name, ".csv"))
-    }
+#' @param format Output format: auto, csv, rds, shp, or tiff.
+classing <- function(x, dir, name, sep = ",", format = "auto") {
+  format <- match.arg(format, c("auto", "csv", "rds", "shp", "tiff"))
+  spatial <- inherits(x, "sf") || inherits(x, "Spatial")
+  raster <- inherits(x, c("RasterLayer", "RasterStack", "RasterBrick"))
+  if (format == "auto") {
+    format <- if (spatial) "shp" else if (inherits(x, "data.frame")) "csv" else if (raster) "tiff" else
+      stop("Unsupported object type. Use format = 'rds' to save any R object.")
   }
+  path <- file.path(dir, paste0(name, ".", format))
+  .ensure_dir(dirname(path))
+  if (format == "rds") {
+    saveRDS(x, path)
+  } else if (format == "csv") {
+    if (!inherits(x, "data.frame")) stop("CSV output requires a data frame.")
+    utils::write.table(x, path, sep = sep, row.names = FALSE,
+                       col.names = TRUE, qmethod = "double")
+  } else if (format == "shp") {
+    if (!spatial) stop("Shapefile output requires an sf or Spatial object.")
+    .need_package("sf")
+    sf::st_write(sf::st_as_sf(x), path, delete_dsn = TRUE, quiet = TRUE)
+  } else {
+    if (!raster) stop("TIFF output requires a RasterLayer, RasterStack, or RasterBrick.")
+    .need_package("raster")
+    raster::writeRaster(x, path, overwrite = TRUE)
+    if (raster::nlayers(x) > 1)
+      utils::write.table(data.frame(x = names(x)), file.path(dir, paste0(name, ".csv")),
+                         sep = sep, row.names = FALSE, qmethod = "double")
+  }
+  invisible(path)
 }
 
 #' Class and import Object
@@ -234,45 +168,42 @@ classing <- function(x, dir, name, sep = ",") {
 #'
 #' @param dir The directory where the object is saved.
 #' @param sep The field separator for CSV files. Defaults to a comma.
-#' @return None
+#' @return The imported object.
 #' @export
 classingImport <- function(dir, sep = ",") {
-  name2 = gsub(".*\\.","",dir)
-  l=NA
-  
-  if (name2 == "shp") {
-    l= st_read(dir)
-  } else if (name2 == "csv") {
-    l = read.csv(dir, sep = sep)
-  } else if (name2 %in%  c("tiff","tif","grd")) {
-    l = stack(dir)
+  .require_file(dir)
+  extension <- tolower(tools::file_ext(dir))
+  if (extension == "csv") return(utils::read.csv(dir, sep = sep))
+  if (extension == "rds") return(readRDS(dir))
+  if (extension == "shp") {
+    .need_package("sf")
+    return(sf::st_read(dir, quiet = TRUE))
   }
-  
-  return(l)
+  if (extension %in% c("tiff", "tif", "grd")) {
+    .need_package("raster")
+    return(raster::stack(dir))
+  }
+  stop("Unsupported file extension: ", extension)
 }
 
 #' Save or import temporary files
 #'
 #' This function saves an object to the temporary data directory or 
-#' imports a temporary file into the global environment.
+#' returns an imported temporary object.
 #' 
 #'
 #' @param x The object to be saved. Ignore for importing data.
 #' @param name Saving: the name of the file (without extension) and
 #' importing: the name of the file (with extension)
-#' @return None
+#' @return The imported object, or the saved file path invisibly.
 #' @export
-tempF <- function(x=NULL, name) {
-  if (!is.null(x)) {
-  mydefaultdir = getCurrentDir()
-  tempfo = paste0(mydefaultdir, "/temp/")
-  classing(x, dir = tempfo, name)} else {
-    mydefaultdir = getCurrentDir()
-    xx= paste0(mydefaultdir, "/temp/", name)
-    if (file.exists(xx)) {
-      classingImport(xx)
-    }
-  }
+#' @param sep The field separator for CSV files. Defaults to a comma.
+#' @param format Output format: auto, csv, rds, shp, or tiff.
+tempF <- function(x = NULL, name, sep = ",", format = "auto") {
+  dir <- file.path(getCurrentDir(), "temp")
+  if (missing(x) || (is.null(x) && format != "rds"))
+    return(classingImport(file.path(dir, name), sep = sep))
+  classing(x, dir, name, sep = sep, format = format)
 }
 
 #' Save Final Object
@@ -282,12 +213,12 @@ tempF <- function(x=NULL, name) {
 #' @param x The object to be saved.
 #' @param dir The subdirectory within the project where the object will be saved.
 #' @param name The name of the file (without extension).
-#' @return None
+#' @return The saved file path invisibly.
 #' @export
-saveF <- function(x, dir, name) {
-  mydefaultdir = getCurrentDir()
-  mydir = paste0(mydefaultdir, "/", dir, "/")
-  classing(x, mydir, name)
+#' @param sep The field separator for CSV files. Defaults to a comma.
+#' @param format Output format: auto, csv, rds, shp, or tiff.
+saveF <- function(x, dir, name, sep = ",", format = "auto") {
+  classing(x, file.path(getCurrentDir(), dir), name, sep = sep, format = format)
 }
 
 #' Run the source script
@@ -300,9 +231,8 @@ saveF <- function(x, dir, name) {
 runSource <- function(name) {
   mydefaultdir = getCurrentDir()
   mydir = paste0(mydefaultdir, "/scripts/source/",name,".R")
-  if (file.exists(mydir)) {source(mydir)} else {
-    message("Source script file doesn't exist.")
-  }
+  .require_file(mydir)
+  source(mydir)
   
 }
 
@@ -316,10 +246,10 @@ runSource <- function(name) {
 saveSource <- function(name) {
   mydefaultdir = getCurrentDir()
   mydir = paste0(mydefaultdir, "/scripts/source/",name,".R")
-  if (file.exists(mydir)) {file.edit(mydir)} else {
+  if (file.exists(mydir)) {utils::file.edit(mydir)} else {
     writeLines(paste0("## ",name, " source script:\n",
                       "library(organizeScripts)\n"), mydir)
-    file.edit(mydir)
+    utils::file.edit(mydir)
   }
 }
 
@@ -332,14 +262,17 @@ saveSource <- function(name) {
 #' @param mywidth The width of the image to be saved.
 #' @param myheight The height of the image to be saved.
 #' @param mydpi The dpi of the image to be saved.
-#' @return None
+#' @return The saved figure paths invisibly.
 #' @export
 saveFigure <- function(x,name,mywidth,myheight,mydpi=300) {
+  .need_package("ggplot2")
   mydefaultdir = getCurrentDir()
   mydir = paste0(mydefaultdir,"/output/figures/",name)
-  ggsave(paste0(mydir,".pdf"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "pdf")
-  ggsave(paste0(mydir,".png"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "png")
-  ggsave(paste0(mydir,".tiff"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "tiff")
+  .ensure_dir(dirname(mydir))
+  ggplot2::ggsave(paste0(mydir,".pdf"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "pdf")
+  ggplot2::ggsave(paste0(mydir,".png"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "png")
+  ggplot2::ggsave(paste0(mydir,".tiff"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "tiff")
+  invisible(paste0(mydir, c(".pdf", ".png", ".tiff")))
 }
 
 #' Save a final figure file in pdf, tiff and png
@@ -351,14 +284,17 @@ saveFigure <- function(x,name,mywidth,myheight,mydpi=300) {
 #' @param mywidth The width of the image to be saved.
 #' @param myheight The height of the image to be saved.
 #' @param mydpi The dpi of the image to be saved.
-#' @return None
+#' @return The saved figure paths invisibly.
 #' @export
 finalFigure <- function(x,name,mywidth=89,myheight=60,mydpi=300) {
+  .need_package("ggplot2")
   mydefaultdir = getCurrentDir()
   mydir = paste0(mydefaultdir,"/output/finalFigures/",name)
-  ggsave(paste0(mydir,".pdf"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "pdf")
-  ggsave(paste0(mydir,".png"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "png")
-  ggsave(paste0(mydir,".tiff"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "tiff")
+  .ensure_dir(dirname(mydir))
+  ggplot2::ggsave(paste0(mydir,".pdf"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "pdf")
+  ggplot2::ggsave(paste0(mydir,".png"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "png")
+  ggplot2::ggsave(paste0(mydir,".tiff"), plot = x, width = mywidth, height = myheight, units = "mm",dpi=mydpi,device = "tiff")
+  invisible(paste0(mydir, c(".pdf", ".png", ".tiff")))
 }
 
 #' Set or get common R library
@@ -367,31 +303,22 @@ finalFigure <- function(x,name,mywidth=89,myheight=60,mydpi=300) {
 #'
 #' @param dir The directory for the common library.
 #' @param overwrite Do you want to overwrite the current directory?
-#' @return None
+#' @return The common library base directory.
 #' @export
-setCommonLib = function(dir ="",overwrite = F) {
-  save_path = system.file(package = "organizeScripts")
-  myfile = paste0(save_path,"/commonLibPath.csv")
-  p =1
-  if (file.exists(myfile)) {
-    myp = read.csv(myfile)$commonlibpath
-    message(paste0("Common library path already exists in :\n",myp))
-    return(myp)
-    p=0
-  } 
-  if (overwrite) { p=1}
-  if (p == 1) { 
-    if (substring(dir,nchar(dir)) == "/") {dir = substr(dir, 1, nchar(dir) - 1)} 
-    write.csv(data.frame(commonlibpath = dir),myfile)
-    dir2 = paste0(dir,"/commonLibraryR") 
-    if (!dir.exists(dir2)) dir.create(dir2)
-    mydir = paste0(dir2,"/final")
-    mydir2 = paste0(dir2,"/backup")
-    if (!dir.exists(mydir)) dir.create(mydir)
-    if (!dir.exists(mydir)) dir.create(mydir)
-    message("Common R library changed.")
-    return(dir)
+setCommonLib <- function(dir = "", overwrite = FALSE) {
+  record <- file.path(.settings_dir(), "commonLibPath.csv")
+  if (file.exists(record) && !overwrite) {
+    dir <- .read_path(record, "commonlibpath")
+  } else {
+    if (length(dir) != 1L || is.na(dir) || !nzchar(dir))
+      stop("Supply a directory to configure the common library.")
+    .ensure_dir(dir)
+    dir <- normalizePath(dir, winslash = "/", mustWork = TRUE)
   }
+  for (folder in c("", "final", "backup"))
+    .ensure_dir(file.path(dir, "commonLibraryR", folder))
+  utils::write.csv(data.frame(commonlibpath = dir), record, row.names = FALSE)
+  dir
 }
 
 #' Process a common library script file.
@@ -407,7 +334,7 @@ processLib <- function(name) {
   if (!file.exists(liB)) {
     writeLines(paste0("## ",name, " library script:\n"), liB)
   }
-  file.edit(liB)
+  utils::file.edit(liB)
 }
 
 #' Finalize a library script
@@ -415,26 +342,10 @@ processLib <- function(name) {
 #' This function finalizes a library script by copying it to the final and backup directories.
 #'
 #' @param name The name of the library script file (without extension).
-#' @return None
+#' @return The final and backup paths invisibly.
 #' @export
 finalLib <- function(name) {
-  mydefaultdir = paste0(setCommonLib(),"/commonLibraryR")
-  P = paste0(mydefaultdir, "/", name, ".R")
-  P2 = paste0(mydefaultdir, "/final/", name, ".R")
-  P4 = gsub(":", "_", gsub("\\.", "_", gsub(" ", "_", Sys.time())))
-  if (!dir.exists(paste0(mydefaultdir, "/backup"))) {
-    dir.create(paste0(mydefaultdir, "/backup"))
-  }
-  if (!dir.exists(paste0(mydefaultdir, "/backup/",name))) {
-    dir.create(paste0(mydefaultdir, "/backup/",name))
-  }
-  
-  P3 = paste0(mydefaultdir, "/backup/", name, "/", name, "_", P4, ".R")
-  file.copy(from = P, to = P2, overwrite = TRUE)
-  if (dir.exists(gsub(paste0("/", gsub(".*\\/", "", P3)), "", P3))) {
-    file.copy(from = P2, to = P3)
-  } else {
-    message("Directory doesn't exist\n")
-  }
+  root <- file.path(setCommonLib(), "commonLibraryR")
+  .finalize(file.path(root, paste0(name, ".R")), root)
 }
 
