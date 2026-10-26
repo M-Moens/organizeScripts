@@ -4,7 +4,7 @@
 \alias{classing}
 \title{Class and Save Object}
 \usage{
-classing(x, dir, name)
+classing(x, dir, name, sep = ",")
 }
 \arguments{
 \item{x}{The object to be saved.}
@@ -12,6 +12,8 @@ classing(x, dir, name)
 \item{dir}{The directory where the object will be saved.}
 
 \item{name}{The name of the file (without extension).}
+
+\item{sep}{The field separator for CSV files. Defaults to a comma.}
 }
 \value{
 None

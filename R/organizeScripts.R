@@ -134,12 +134,13 @@ importD <- function(name, sep = ",") {
 #'
 #' @param x The object to be saved.
 #' @param name The name of the file (without extension).
+#' @param sep The field separator for CSV files. Defaults to a comma.
 #' @return None
 #' @export
-saveD <- function(x,name) {
+saveD <- function(x, name, sep = ",") {
   mydefaultdir = getCurrentDir()
   mydir = paste0(mydefaultdir, "/data/")
-  classing(x, dir = mydir, name)
+  classing(x, dir = mydir, name, sep = sep)
 }
 
 #' Finalize a data file
@@ -210,13 +211,15 @@ finalScript <- function(name) {
 #' @param x The object to be saved.
 #' @param dir The directory where the object will be saved.
 #' @param name The name of the file (without extension).
+#' @param sep The field separator for CSV files. Defaults to a comma.
 #' @return None
 #' @export
-classing <- function(x, dir, name) {
+classing <- function(x, dir, name, sep = ",") {
   if (class(x) == "sp") {
     st_write(x, paste0(dir, name, ".shp"),delete_dsn = TRUE)
   } else if (class(x) == "data.frame") {
-    write.csv(x, paste0(dir, name, ".csv"), row.names = FALSE)
+    write.table(x, paste0(dir, name, ".csv"), sep = sep,
+                row.names = FALSE, col.names = TRUE, qmethod = "double")
   } else if (class(x) == "raster") {
     writeRaster(x, paste0(dir, name, ".tiff"),overwrite = T)
     if (nlayers(x) > 1) {

@@ -4,12 +4,14 @@
 \alias{saveD}
 \title{Save a data file}
 \usage{
-saveD(x, name)
+saveD(x, name, sep = ",")
 }
 \arguments{
 \item{x}{The object to be saved.}
 
 \item{name}{The name of the file (without extension).}
+
+\item{sep}{The field separator for CSV files. Defaults to a comma.}
 }
 \value{
 None
