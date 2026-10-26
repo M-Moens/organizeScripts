@@ -66,6 +66,8 @@ getCurrentDir <- function() {
 #' Process a Script File
 #'
 #' This function processes a script file within the project directory.
+#' Opens the file in RStudio when its API is available, otherwise in the
+#' configured R editor.
 #'
 #' @param name The name of the script file (without extension).
 #' @return None
@@ -75,7 +77,12 @@ processScript <- function(name) {
   if (!file.exists(paste0(mydefaultdir, "/scripts/", name, ".R"))) {
     writeLines(paste0("## ",name, " script:\n"), paste0(mydefaultdir, "/scripts/", name, ".R"))
   }
-  utils::file.edit(paste0(mydefaultdir, "/scripts/", name, ".R"))
+  path <- file.path(mydefaultdir, "scripts", paste0(name, ".R"))
+  if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+    rstudioapi::navigateToFile(path)
+  } else {
+    utils::file.edit(path)
+  }
 }
 
 #' Import a data file

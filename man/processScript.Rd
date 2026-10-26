@@ -13,4 +13,6 @@ None
 }
 \description{
 This function processes a script file within the project directory.
+Opens the file in RStudio when its API is available, otherwise in the
+configured R editor.
 }

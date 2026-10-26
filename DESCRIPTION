@@ -8,7 +8,7 @@ Description: Functions to create, manage, and organize project directories and s
 License: MIT + file LICENSE
 Depends: R (>= 4.0.0)
 Imports: utils, tools
-Suggests: ggplot2, sf, raster
+Suggests: ggplot2, sf, raster, rstudioapi
 URL: https://github.com/M-Moens/organizeScripts
 BugReports: https://github.com/M-Moens/organizeScripts/issues
 Encoding: UTF-8
