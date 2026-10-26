@@ -16,11 +16,19 @@ newProject <- function(dir, projectName) {
     "output/figures", "output/finalFigures", "output/models", "data/final",
     "scripts/source", "scripts/final", "scripts/backup", "data/backup",
     "data/extra", "data/original")
+  project_folders <- c(root, file.path(root, folders))
+  added <- sum(!dir.exists(project_folders))
   .ensure_dir(root)
   root <- normalizePath(root, winslash = "/", mustWork = TRUE)
   for (folder in folders) .ensure_dir(file.path(root, folder))
   utils::write.csv(data.frame(x = projectName, y = root), record, row.names = FALSE)
   setProject(projectName)
+  if (added > 0L) {
+    message("Project '", projectName, "': created ", added, " new folder",
+            if (added == 1L) "." else "s.")
+  } else {
+    message("Project '", projectName, "': all folders already exist; no new folders added.")
+  }
   invisible(root)
 }
 
