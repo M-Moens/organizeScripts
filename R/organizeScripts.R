@@ -261,10 +261,10 @@ runSource <- function(name) {
 saveSource <- function(name) {
   mydefaultdir = getCurrentDir()
   mydir = paste0(mydefaultdir, "/scripts/source/",name,".R")
-  if (file.exists(mydir)) {utils::file.edit(mydir)} else {
+  if (file.exists(mydir)) {rstudioapi::navigateToFile(mydir)} else {
     writeLines(paste0("## ",name, " source script:\n",
                       "library(organizeScripts)\n"), mydir)
-    utils::file.edit(mydir)
+    rstudioapi::navigateToFile(mydir)
   }
 }
 
@@ -349,7 +349,7 @@ processLib <- function(name) {
   if (!file.exists(liB)) {
     writeLines(paste0("## ",name, " library script:\n"), liB)
   }
-  utils::file.edit(liB)
+  rstudioapi::navigateToFile(liB)
 }
 
 #' Finalize a library script
