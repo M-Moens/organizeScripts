@@ -32,6 +32,19 @@ newProject <- function(dir, projectName) {
   invisible(root)
 }
 
+#' List Registered Projects
+#'
+#' This function lists the names of all registered projects.
+#'
+#' @return A character vector of project names.
+#' @export
+listProjects <- function() {
+  projects <- file.path(.settings_dir(), "projects")
+  records <- list.files(projects, pattern = "[.]csv$", full.names = FALSE)
+  names <- tools::file_path_sans_ext(records)
+  sort(names[names != "cur1234"])
+}
+
 #' Set Project Directory
 #'
 #' This function sets the default project directory.

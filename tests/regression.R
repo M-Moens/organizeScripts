@@ -23,6 +23,7 @@ local({
   fails(getCurrentDir(), "No active project")
   first <- newProject(sandbox, "first")
   second <- newProject(sandbox, "second")
+  stopifnot(identical(listProjects(), c("first", "second")))
   stopifnot(identical(getCurrentDir(), second))
   stopifnot(identical(normalizePath(getwd(), winslash = "/"), second))
   setProject("first")
