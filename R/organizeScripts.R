@@ -37,7 +37,8 @@ newProject <- function(dir, projectName) {
 #' This function sets the default project directory.
 #'
 #' @param projectName The name of the project.
-#' @return The active project directory invisibly.
+#' @return The active project directory invisibly. The R working directory is
+#'   also changed to the active project directory.
 #' @export
 setProject <- function(projectName) {
   .check_name(projectName)
@@ -46,6 +47,7 @@ setProject <- function(projectName) {
   path <- .read_path(record, "y")
   if (!dir.exists(path)) stop("Project directory does not exist: ", path)
   .copy_file(record, file.path(settings, "projects", "cur1234.csv"))
+  setwd(path)
   invisible(path)
 }
 
